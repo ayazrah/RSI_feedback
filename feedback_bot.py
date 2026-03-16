@@ -225,7 +225,7 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
                 f"🆔 ID клиента: {client.id}\n"
                 f"👨‍💼 Менеджер: {manager_name}\n"
                 f"⭐ Ответ: {rating}\n"
-                f"🕐 Время: {datetime.now().strftime('%d.%m.%Y %H:%M')}"
+                f"🕐 Время: {datetime.now(MSK)strftime('%d.%m.%Y %H:%M')}"
             ),
         )
     except Exception as e:
