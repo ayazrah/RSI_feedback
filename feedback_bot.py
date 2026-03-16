@@ -20,7 +20,9 @@ import os
 import sqlite3
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+MSK = timezone(timedelta(hours=3))
 
 from telegram import (
     Update,
