@@ -38,7 +38,7 @@ from telegram.ext import (
 )
 
 # ── Настройки ──────────────────────────────────────────────────────────────────
-BOT_TOKEN      = os.getenv("BOT_TOKEN", "бот токен")
+BOT_TOKEN      = os.getenv("BOT_TOKEN", "ВСТАВЬТЕ_ВАШ_ТОКЕН_СЮДА")
 DB_PATH        = "feedback.db"
 NOTIFY_CHAT_ID = -5256704524  # ID группы куда приходят все уведомления
 
