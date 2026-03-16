@@ -232,7 +232,7 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
             f"Ваш ответ: {rating}\n\n"
             "Жаль, что что-то пошло не так 😔\n"
             "Если хотите оставить комментарий — нажмите кнопку ниже,\n"
-            "запустите бота и напишите одним сообщением что пошло не так:"
+            "запустите бота и напишите одним сообщением что пошло не так:",
             reply_markup=keyboard,
         )
     else:
