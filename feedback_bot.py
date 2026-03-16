@@ -261,6 +261,31 @@ async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(lines))
 
 
+async def cmd_export(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    with sqlite3.connect(DB_PATH) as conn:
+        rows = conn.execute("""
+            SELECT created_at, survey_title, rating, client_name, client_id, manager_name, manager_id
+            FROM feedback
+            ORDER BY created_at DESC
+        """).fetchall()
+
+    if not rows:
+        await update.message.reply_text("📊 Пока нет ни одного ответа.")
+        return
+
+    lines = ["Дата;Опрос;Ответ;Клиент;ID клиента;Менеджер;ID менеджера"]
+    for row in rows:
+        lines.append(";".join(str(x) for x in row))
+
+    csv_text = "\n".join(lines)
+    csv_bytes = csv_text.encode("utf-8-sig")  # utf-8-sig чтобы Excel открывал корректно
+
+    await update.message.reply_document(
+        document=csv_bytes,
+        filename=f"feedback_{datetime.now().strftime('%d%m%Y_%H%M')}.csv",
+        caption="📊 Выгрузка обратной связи"
+    )
+
 # ── Запуск ─────────────────────────────────────────────────────────────────────
 def main():
     init_db()
@@ -268,6 +293,7 @@ def main():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("stats", cmd_stats))
+    app.add_handler(CommandHandler("export", cmd_export))
     app.add_handler(InlineQueryHandler(handle_inline_query))
     app.add_handler(CallbackQueryHandler(handle_feedback_button, pattern=r"^fb\|"))
 
