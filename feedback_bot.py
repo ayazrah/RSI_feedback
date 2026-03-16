@@ -231,7 +231,8 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
             f"{survey.get('question', 'Оценка сервиса')}\n\n"
             f"Ваш ответ: {rating}\n\n"
             "Жаль, что что-то пошло не так 😔\n"
-            "Если хотите — расскажите подробнее, мы разберёмся:",
+            "Если хотите оставить комментарий — нажмите кнопку ниже,\n"
+            "запустите бота и напишите одним сообщением что пошло не так:"
             reply_markup=keyboard,
         )
     else:
@@ -279,8 +280,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 }
                 await update.message.reply_text(
                     "Спасибо что решили написать! 🙏\n\n"
-                    "Расскажите пожалуйста что именно пошло не так — "
-                    "мы обязательно разберёмся и исправим:"
+                    "Напишите пожалуйста одним сообщением что именно пошло не так — "
+                    "мы обязательно разберёмся и исправим.\n\n"
                 )
                 return
         except Exception as e:
