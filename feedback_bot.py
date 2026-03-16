@@ -85,7 +85,7 @@ def save_feedback(survey_title, survey_question, rating,
                (created_at, survey_title, survey_question, rating,
                 client_name, client_id, manager_name, manager_id)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (datetime.now().isoformat(), survey_title, survey_question,
+            (datetime.now(MSK).isoformat(), survey_title, survey_question,
              rating, client_name, client_id, manager_name, manager_id),
         )
         conn.commit()
