@@ -40,7 +40,7 @@ from telegram.ext import (
 # ── Настройки ──────────────────────────────────────────────────────────────────
 BOT_TOKEN      = os.getenv("BOT_TOKEN", "ВСТАВЬТЕ_ВАШ_ТОКЕН_СЮДА")
 DB_PATH        = "feedback.db"
-NOTIFY_CHAT_ID = -5256704524  # ID группы куда приходят все уведомления
+NOTIFY_CHAT_ID = -1003820171858  # ID группы куда приходят все уведомления
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
