@@ -49,6 +49,7 @@ logger = logging.getLogger(__name__)
 # ── Whitelist ──────────────────────────────────────────────────────────────────
 ALLOWED_USERS = {
     108667940,   # Менеджер Ayaz
+    5808377858,   # Менеджер Nikita_garant
 }
 
 
