@@ -42,6 +42,31 @@ logger = logging.getLogger(__name__)
 ALLOWED_USERS = {
     108667940,    # Менеджер ayazayaz
     5808377858,   # Менеджер nikita_garant
+    7205308109, # Менеджер ZULFAT_GARANT
+6655733699, # Менеджер Andrei_garant
+6138623597, # Менеджер Kem_garant
+7664718647, # Менеджер leisan_garant
+7993132246, # Менеджер Shvartsman_GARANT
+6872667947, # Менеджер AZAT_GRNT
+6263705985, # Менеджер rustam_garant
+5942862179, # Менеджер ZAGarant
+8480026847, # Менеджер elnara_garant
+8748818704, # Менеджер garant_keeper
+5268473829, # Менеджер rs_garant
+7781558647, # Менеджер rr16main
+153163996,  # Менеджер salamonovalexey
+7830114802, # Менеджер Marty_Garant
+321931103,  # Менеджер Maxinvestman
+1723384169, # Менеджер rsi_garant
+7739441098, # Менеджер trade_aam
+572594467,  # Менеджер azat_garant
+175983565,  # Менеджер Sabirov_Airat
+68015989,   # Менеджер saleevya
+203219055,  # Менеджер dicheri
+100835492,  # Менеджер grenat
+5950933923, # Менеджер albertf116
+8580932423, # Менеджер Rashid_Garant
+8415301378, # Менеджер TIM_GARANTRSI
 }
 
 ADMIN_USERS = {
