@@ -51,7 +51,10 @@ ALLOWED_USERS = {
     108667940,   # Менеджер Ayaz
     5808377858,   # Менеджер Nikita_garant
 }
-
+ADMIN_USERS = {
+    108667940,   # Администратор Ayaz
+    5808377858,   # администратор Nikita_garant
+}
 
 # ── База данных ────────────────────────────────────────────────────────────────
 def init_db():
@@ -333,6 +336,9 @@ async def handle_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ── Команды ────────────────────────────────────────────────────────────────────
 async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ADMIN_USERS:
+        await update.message.reply_text("⛔ У вас нет доступа.")
+        return
     rows, total = get_stats()
     if total == 0:
         await update.message.reply_text("📊 Пока нет ни одного ответа.")
@@ -348,6 +354,9 @@ async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_export(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ADMIN_USERS:
+        await update.message.reply_text("⛔ У вас нет доступа.")
+        return
     with sqlite3.connect(DB_PATH) as conn:
         rows = conn.execute("""
             SELECT created_at, survey_title, rating, comment,
