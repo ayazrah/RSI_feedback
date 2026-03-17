@@ -342,7 +342,10 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             logger.warning(f"Ошибка deep link: {e}")
 
-await update.message.reply_text(
+async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.args and context.args[0].startswith("comment_"):
+        
+        await update.message.reply_text(
         "👋 Здравствуйте!\n\n"
         "Мы ценим ваше мнение и хотим становиться лучше.\n\n"
         "Если вы здесь — значит наш менеджер попросил вас "
