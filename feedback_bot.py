@@ -154,6 +154,7 @@ def init_db():
                 survey_question TEXT NOT NULL,
                 rating          TEXT NOT NULL,
                 comment         TEXT,
+                comment_at      TEXT,
                 client_name     TEXT,
                 client_id       INTEGER NOT NULL,
                 manager_name    TEXT,
@@ -180,14 +181,18 @@ def save_feedback(survey_title, survey_question, rating,
 
 def save_comment(feedback_id, comment):
     with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("UPDATE feedback SET comment = ? WHERE id = ?", (comment, feedback_id))
+        conn.execute(
+            "UPDATE feedback SET comment = ?, comment_at = ? WHERE id = ?",
+            (comment, datetime.now(MSK).isoformat(), feedback_id)
+        )
         conn.commit()
 
 
 def get_feedback_by_id(feedback_id):
     with sqlite3.connect(DB_PATH) as conn:
         return conn.execute(
-            "SELECT survey_title, rating, client_name, manager_name FROM feedback WHERE id = ?",
+            """SELECT survey_title, rating, client_name, manager_name,
+                      created_at, comment FROM feedback WHERE id = ?""",
             (feedback_id,)
         ).fetchone()
 
@@ -320,7 +325,25 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             feedback_id = int(context.args[0].split("_")[1])
             row = get_feedback_by_id(feedback_id)
             if row:
-                survey_title, rating, client_name, manager_name = row
+                survey_title, rating, client_name, manager_name, created_at, comment = row
+
+                # Проверка — комментарий уже был оставлен
+                if comment:
+                    await update.message.reply_text(
+                        "Ваш комментарий уже получен, спасибо! 🙏\n"
+                        "Если есть вопросы — напишите напрямую менеджеру."
+                    )
+                    return
+
+                # Проверка — прошло больше 24 часов
+                created = datetime.fromisoformat(created_at)
+                if (datetime.now(MSK) - created).total_seconds() > 86400:
+                    await update.message.reply_text(
+                        "Время для оставления комментария истекло 😔\n"
+                        "Если есть вопросы — напишите напрямую менеджеру."
+                    )
+                    return
+
                 context.user_data["awaiting_comment"] = {
                     "feedback_id": feedback_id,
                     "rating": rating,
@@ -332,7 +355,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "Спасибо что решили написать! 🙏\n\n"
                     "Напишите пожалуйста одним сообщением что именно произошло — "
                     "мы обязательно разберёмся и исправим.\n\n"
-                    "⚠️ Напишите всё одним сообщением, после отправки комментарий будет сохранён."
+                    
                 )
                 return
         except Exception as e:
