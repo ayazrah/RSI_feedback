@@ -42,31 +42,31 @@ logger = logging.getLogger(__name__)
 ALLOWED_USERS = {
     108667940,    # Менеджер ayazayaz
     5808377858,   # Менеджер nikita_garant
-    7205308109, # Менеджер ZULFAT_GARANT
-6655733699, # Менеджер Andrei_garant
-6138623597, # Менеджер Kem_garant
-7664718647, # Менеджер leisan_garant
-7993132246, # Менеджер Shvartsman_GARANT
-6872667947, # Менеджер AZAT_GRNT
-6263705985, # Менеджер rustam_garant
-5942862179, # Менеджер ZAGarant
-8480026847, # Менеджер elnara_garant
-8748818704, # Менеджер garant_keeper
-5268473829, # Менеджер rs_garant
-7781558647, # Менеджер rr16main
-153163996,  # Менеджер salamonovalexey
-7830114802, # Менеджер Marty_Garant
-321931103,  # Менеджер Maxinvestman
-1723384169, # Менеджер rsi_garant
-7739441098, # Менеджер trade_aam
-572594467,  # Менеджер azat_garant
-175983565,  # Менеджер Sabirov_Airat
-68015989,   # Менеджер saleevya
-203219055,  # Менеджер dicheri
-100835492,  # Менеджер grenat
-5950933923, # Менеджер albertf116
-8580932423, # Менеджер Rashid_Garant
-8415301378, # Менеджер TIM_GARANTRSI
+    7205308109,   # Менеджер ZULFAT_GARANT
+    6655733699,   # Менеджер Andrei_garant
+    6138623597,   # Менеджер Kem_garant
+    7664718647,   # Менеджер leisan_garant
+    7993132246,   # Менеджер Shvartsman_GARANT
+    6872667947,   # Менеджер AZAT_GRNT
+    6263705985,   # Менеджер rustam_garant
+    5942862179,   # Менеджер ZAGarant
+    8480026847,   # Менеджер elnara_garant
+    8748818704,   # Менеджер garant_keeper
+    5268473829,   # Менеджер rs_garant
+    7781558647,   # Менеджер rr16main
+    153163996,    # Менеджер salamonovalexey
+    7830114802,   # Менеджер Marty_Garant
+    321931103,    # Менеджер Maxinvestman
+    1723384169,   # Менеджер rsi_garant
+    7739441098,   # Менеджер trade_aam
+    572594467,    # Менеджер azat_garant
+    175983565,    # Менеджер Sabirov_Airat
+    68015989,     # Менеджер saleevya
+    203219055,    # Менеджер dicheri
+    100835492,    # Менеджер grenat
+    5950933923,   # Менеджер albertf116
+    8580932423,   # Менеджер Rashid_Garant
+    8415301378,   # Менеджер TIM_GARANTRSI
 }
 
 ADMIN_USERS = {
@@ -75,7 +75,6 @@ ADMIN_USERS = {
 }
 
 # ── Шаблоны опросов ────────────────────────────────────────────────────────────
-# buttons: список (код, текст, негативная?)
 SURVEYS = [
     {
         "id": "speed",
@@ -138,7 +137,6 @@ SURVEYS = [
 
 SURVEY_MAP = {s["id"]: s for s in SURVEYS}
 
-# Маппинг код → (текст, негативная?)
 BUTTON_MAP = {}
 for s in SURVEYS:
     for code, text, is_negative in s["buttons"]:
@@ -225,8 +223,6 @@ async def handle_inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton(
                 text,
-                # callback_data: fb|код_кнопки|id_менеджера
-                # короткий формат — влезает в 64 байта
                 callback_data=f"fb|{code}|{manager.id}"
             )]
             for code, text, _ in survey["buttons"]
@@ -264,9 +260,8 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
     rating_text, is_negative, survey_id = BUTTON_MAP[btn_code]
     survey = SURVEY_MAP.get(survey_id, {})
 
-    # Получаем имя менеджера из базы или из контекста
-    manager = await context.bot.get_chat(manager_id)
-    manager_name = manager.full_name if manager else str(manager_id)
+    manager_chat = await context.bot.get_chat(manager_id)
+    manager_name = manager_chat.full_name if manager_chat else str(manager_id)
 
     feedback_id = save_feedback(
         survey_title=survey.get("title", survey_id),
@@ -319,6 +314,7 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
 
 # ── /start ─────────────────────────────────────────────────────────────────────
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Deep link — клиент хочет оставить комментарий
     if context.args and context.args[0].startswith("comment_"):
         try:
             feedback_id = int(context.args[0].split("_")[1])
@@ -342,10 +338,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             logger.warning(f"Ошибка deep link: {e}")
 
-async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if context.args and context.args[0].startswith("comment_"):
-        
-        await update.message.reply_text(
+    # Обычный /start — для клиента
+    await update.message.reply_text(
         "👋 Здравствуйте!\n\n"
         "Мы ценим ваше мнение и хотим становиться лучше.\n\n"
         "Если вы здесь — значит наш менеджер попросил вас "
