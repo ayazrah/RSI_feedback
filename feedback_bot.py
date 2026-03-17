@@ -5,6 +5,13 @@ Telegram Inline Feedback Bot → SQLite
 Клиент нажимает кнопку — ответ сохраняется в feedback.db (SQLite).
 При негативной оценке появляется кнопка "Оставить комментарий".
 Уведомления приходят в одну группу.
+
+5 шаблонов опросов:
+1. Скорость выполнения — после закрытия заявки
+2. Коммуникация — после закрытия заявки
+3. Готовность вернуться — после закрытия заявки
+4. Почему не совершил обмен — когда клиент отказался
+5. Общее впечатление — после любого контакта
 """
 
 import os
@@ -32,12 +39,19 @@ from telegram.ext import (
 
 # ── Настройки ──────────────────────────────────────────────────────────────────
 BOT_TOKEN      = os.getenv("BOT_TOKEN", "ВСТАВЬТЕ_ВАШ_ТОКЕН_СЮДА")
-BOT_USERNAME   = os.getenv("BOT_USERNAME", "ВСТАВЬТЕ_USERNAME_БОТА")  # без @
+BOT_USERNAME   = os.getenv("BOT_USERNAME", "ВСТАВЬТЕ_USERNAME_БОТА")
 DB_PATH        = "feedback.db"
 NOTIFY_CHAT_ID = -1003820171858
 MSK            = timezone(timedelta(hours=3))
 
-NEGATIVE_RATINGS = {"👎 Плохо", "❌ Нет", "🐢 Медленно", "👎 Нет"}
+# Все кнопки которые запрашивают комментарий
+NEGATIVE_RATINGS = {
+    "👎 Плохо", "❌ Нет", "🐢 Медленно", "👎 Нет",
+    "😟 Остался неприятный осадок", "😐 Нормально, но есть что улучшить",
+    "💰 Не устроил курс", "⏳ Слишком долго ждать",
+    "😕 Не хватило информации", "🔒 Сомнения в безопасности",
+    "🏦 Нашёл другой сервис",
+}
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -46,15 +60,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# ── Whitelist ──────────────────────────────────────────────────────────────────
+# ── Доступ ─────────────────────────────────────────────────────────────────────
 ALLOWED_USERS = {
     108667940,   # Менеджер Ayaz
-    5808377858,   # Менеджер Nikita_garant
 }
+
 ADMIN_USERS = {
     108667940,   # Администратор Ayaz
-    5808377858,   # администратор Nikita_garant
 }
+
 
 # ── База данных ────────────────────────────────────────────────────────────────
 def init_db():
@@ -124,32 +138,39 @@ def get_stats():
 # ── Шаблоны опросов ────────────────────────────────────────────────────────────
 SURVEYS = [
     {
-        "id": "general",
-        "title": "Общая оценка сервиса",
-        "description": "Как вам наш сервис в целом?",
-        "question": "👋 Оцените, пожалуйста, качество нашего сервиса:",
-        "buttons": ["👍 Отлично", "😐 Нормально", "👎 Плохо"],
-    },
-    {
-        "id": "support",
-        "title": "Оценка поддержки",
-        "description": "Помогли ли мы решить ваш вопрос?",
-        "question": "🎧 Мы решили ваш вопрос?",
-        "buttons": ["✅ Да, полностью", "⚠️ Частично", "❌ Нет"],
-    },
-    {
         "id": "speed",
-        "title": "Скорость обслуживания",
-        "description": "Насколько быстро мы ответили?",
-        "question": "⚡ Оцените скорость нашего ответа:",
-        "buttons": ["🚀 Быстро", "🕐 Приемлемо", "🐢 Медленно"],
+        "title": "Скорость выполнения",
+        "description": "Как вам скорость выполнения заявки?",
+        "question": "⚡ Как вам скорость выполнения заявки?",
+        "buttons": ["🚀 Быстро, всё устроило", "🕐 Дольше чем ожидал", "😤 Очень долго, это проблема"],
     },
     {
-        "id": "recommend",
-        "title": "Рекомендация",
-        "description": "Порекомендуете ли нас друзьям?",
-        "question": "🤝 Вы бы порекомендовали нас друзьям или коллегам?",
-        "buttons": ["👍 Да, конечно", "🤔 Возможно", "👎 Нет"],
+        "id": "communication",
+        "title": "Коммуникация",
+        "description": "Держали ли вас в курсе по ходу заявки?",
+        "question": "📞 Держали ли вас в курсе по ходу заявки?",
+        "buttons": ["👍 Да, всё было понятно", "😐 Иногда уточнял сам", "👎 Нет, приходилось постоянно спрашивать"],
+    },
+    {
+        "id": "return",
+        "title": "Готовность вернуться",
+        "description": "Планируете обратиться к нам снова?",
+        "question": "🔄 Планируете обратиться к нам снова?",
+        "buttons": ["✅ Да, буду обращаться", "🤔 Зависит от условий", "❌ Нет"],
+    },
+    {
+        "id": "declined",
+        "title": "Почему не совершил обмен",
+        "description": "Для клиентов которые отказались от сделки",
+        "question": "🤔 Почему вы решили не продолжать?",
+        "buttons": ["💰 Не устроил курс", "⏳ Слишком долго ждать", "😕 Не хватило информации", "🔒 Сомнения в безопасности", "🏦 Нашёл другой сервис"],
+    },
+    {
+        "id": "impression",
+        "title": "Общее впечатление",
+        "description": "Эмоции и впечатления от работы с нами",
+        "question": "😊 Как вам общее впечатление от работы с нами?",
+        "buttons": ["😊 Всё понравилось, вернусь снова", "😐 Нормально, но есть что улучшить", "😟 Остался неприятный осадок"],
     },
 ]
 
@@ -213,7 +234,6 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
     client = query.from_user
     survey = SURVEY_MAP.get(survey_id, {})
 
-    # Сохраняем в SQLite
     feedback_id = save_feedback(
         survey_title=survey.get("title", survey_id),
         survey_question=survey.get("question", ""),
@@ -224,8 +244,11 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
         manager_id=manager_id,
     )
 
-    # Если негативная — показываем кнопку "Оставить комментарий" с deep link
-    if rating in NEGATIVE_RATINGS:
+    # Для шаблона "отказался" — комментарий всегда
+    # Для остальных — только при негативной оценке
+    needs_comment = (survey_id == "declined") or (rating in NEGATIVE_RATINGS)
+
+    if needs_comment:
         deep_link = f"https://t.me/{BOT_USERNAME}?start=comment_{feedback_id}"
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("✏️ Оставить комментарий", url=deep_link)]
@@ -233,9 +256,8 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
         await query.edit_message_text(
             f"{survey.get('question', 'Оценка сервиса')}\n\n"
             f"Ваш ответ: {rating}\n\n"
-            "Жаль, что что-то пошло не так 😔\n"
             "Если хотите оставить комментарий — нажмите кнопку ниже,\n"
-            "запустите бота и напишите одним сообщением что пошло не так:",
+            "запустите бота и напишите одним сообщением:",
             reply_markup=keyboard,
         )
     else:
@@ -257,7 +279,7 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
                 f"👨‍💼 Менеджер: {manager_name}\n"
                 f"⭐ Ответ: {rating}\n"
                 f"🕐 Время: {datetime.now(MSK).strftime('%d.%m.%Y %H:%M')}"
-                + ("\n⏳ Ожидаем комментарий..." if rating in NEGATIVE_RATINGS else "")
+                + ("\n⏳ Ожидаем комментарий..." if needs_comment else "")
             ),
         )
     except Exception as e:
@@ -266,14 +288,12 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
 
 # ── /start — обычный и с deep link ────────────────────────────────────────────
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Проверяем есть ли параметр comment_ID
     if context.args and context.args[0].startswith("comment_"):
         try:
             feedback_id = int(context.args[0].split("_")[1])
             row = get_feedback_by_id(feedback_id)
             if row:
                 survey_title, rating, client_name, manager_name = row
-                # Сохраняем в контексте что ждём комментарий
                 context.user_data["awaiting_comment"] = {
                     "feedback_id": feedback_id,
                     "rating": rating,
@@ -283,8 +303,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 }
                 await update.message.reply_text(
                     "Спасибо что решили написать! 🙏\n\n"
-                    "Напишите пожалуйста одним сообщением что именно пошло не так — "
+                    "Напишите пожалуйста одним сообщением что именно произошло — "
                     "мы обязательно разберёмся и исправим.\n\n"
+                    "⚠️ Напишите всё одним сообщением, после отправки комментарий будет сохранён."
                 )
                 return
         except Exception as e:
@@ -322,7 +343,7 @@ async def handle_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=NOTIFY_CHAT_ID,
             text=(
-                f"💬 Комментарий к негативной оценке!\n\n"
+                f"💬 Комментарий к оценке!\n\n"
                 f"📋 Опрос: {data['survey_title']}\n"
                 f"👤 Клиент: {data['client_name']}\n"
                 f"⭐ Оценка: {data['rating']}\n"
@@ -339,6 +360,7 @@ async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMIN_USERS:
         await update.message.reply_text("⛔ У вас нет доступа.")
         return
+
     rows, total = get_stats()
     if total == 0:
         await update.message.reply_text("📊 Пока нет ни одного ответа.")
@@ -357,6 +379,7 @@ async def cmd_export(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMIN_USERS:
         await update.message.reply_text("⛔ У вас нет доступа.")
         return
+
     with sqlite3.connect(DB_PATH) as conn:
         rows = conn.execute("""
             SELECT created_at, survey_title, rating, comment,
