@@ -143,6 +143,13 @@ for s in SURVEYS:
         BUTTON_MAP[code] = (text, is_negative, s["id"])
 
 
+# ── Вспомогательная функция для username ──────────────────────────────────────
+def fmt_username(username):
+    if username:
+        return f"@{username}"
+    return "не указан"
+
+
 # ── База данных ────────────────────────────────────────────────────────────────
 def init_db():
     with sqlite3.connect(DB_PATH) as conn:
@@ -156,6 +163,7 @@ def init_db():
                 comment         TEXT,
                 comment_at      TEXT,
                 client_name     TEXT,
+                client_username TEXT,
                 client_id       INTEGER NOT NULL,
                 manager_name    TEXT,
                 manager_id      INTEGER NOT NULL
@@ -165,15 +173,15 @@ def init_db():
 
 
 def save_feedback(survey_title, survey_question, rating,
-                  client_name, client_id, manager_name, manager_id):
+                  client_name, client_username, client_id, manager_name, manager_id):
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.execute(
             """INSERT INTO feedback
                (created_at, survey_title, survey_question, rating,
-                client_name, client_id, manager_name, manager_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                client_name, client_username, client_id, manager_name, manager_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (datetime.now(MSK).isoformat(), survey_title, survey_question,
-             rating, client_name, client_id, manager_name, manager_id),
+             rating, client_name, client_username, client_id, manager_name, manager_id),
         )
         conn.commit()
         return cursor.lastrowid
@@ -191,8 +199,8 @@ def save_comment(feedback_id, comment):
 def get_feedback_by_id(feedback_id):
     with sqlite3.connect(DB_PATH) as conn:
         return conn.execute(
-            """SELECT survey_title, rating, client_name, manager_name,
-                      created_at, comment FROM feedback WHERE id = ?""",
+            """SELECT survey_title, rating, client_name, client_username,
+                      manager_name, created_at, comment FROM feedback WHERE id = ?""",
             (feedback_id,)
         ).fetchone()
 
@@ -273,6 +281,7 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
         survey_question=survey.get("question", ""),
         rating=rating_text,
         client_name=client.full_name,
+        client_username=client.username,
         client_id=client.id,
         manager_name=manager_name,
         manager_id=manager_id,
@@ -302,11 +311,11 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
     try:
         await context.bot.send_message(
             chat_id=NOTIFY_CHAT_ID,
-           text=(
+            text=(
                 f"📊 Новая обратная связь!\n\n"
                 f"📋 Опрос: {survey.get('title', survey_id)}\n"
                 f"👤 Клиент: {client.full_name}\n"
-                f"🔗 Username: @{client.username}" if client.username else f"🔗 Username: не указан") + "\n"
+                f"🔗 Username: {fmt_username(client.username)}\n"
                 f"🆔 ID клиента: {client.id}\n"
                 f"👨‍💼 Менеджер: {manager_name}\n"
                 f"⭐ Ответ: {rating_text}\n"
@@ -320,13 +329,12 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
 
 # ── /start ─────────────────────────────────────────────────────────────────────
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Deep link — клиент хочет оставить комментарий
     if context.args and context.args[0].startswith("comment_"):
         try:
             feedback_id = int(context.args[0].split("_")[1])
             row = get_feedback_by_id(feedback_id)
             if row:
-                survey_title, rating, client_name, manager_name, created_at, comment = row
+                survey_title, rating, client_name, client_username, manager_name, created_at, comment = row
 
                 # Проверка — комментарий уже был оставлен
                 if comment:
@@ -350,6 +358,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "rating": rating,
                     "survey_title": survey_title,
                     "client_name": client_name,
+                    "client_username": client_username,
                     "manager_name": manager_name,
                 }
                 await update.message.reply_text(
@@ -362,7 +371,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             logger.warning(f"Ошибка deep link: {e}")
 
-    # Обычный /start — для клиента
     await update.message.reply_text(
         "👋 Здравствуйте!\n\n"
         "Мы ценим ваше мнение и хотим становиться лучше.\n\n"
@@ -394,7 +402,7 @@ async def handle_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"💬 Комментарий к оценке!\n\n"
                 f"📋 Опрос: {data['survey_title']}\n"
                 f"👤 Клиент: {data['client_name']}\n"
-                f"🔗 Username: @{update.effective_user.username}" if update.effective_user.username else "🔗 Username: не указан") + "\n"
+                f"🔗 Username: {fmt_username(data.get('client_username'))}\n"
                 f"⭐ Оценка: {data['rating']}\n"
                 f"👨‍💼 Менеджер: {data['manager_name']}\n\n"
                 f"📝 Комментарий:\n{comment}"
@@ -428,13 +436,13 @@ async def cmd_export(update: Update, context: ContextTypes.DEFAULT_TYPE):
     with sqlite3.connect(DB_PATH) as conn:
         rows = conn.execute("""
             SELECT created_at, survey_title, rating, comment,
-                   client_name, client_id, manager_name, manager_id
+                   client_name, client_username, client_id, manager_name, manager_id
             FROM feedback ORDER BY created_at DESC
         """).fetchall()
     if not rows:
         await update.message.reply_text("📊 Пока нет ни одного ответа.")
         return
-    lines = ["Дата;Опрос;Ответ;Комментарий;Клиент;ID клиента;Менеджер;ID менеджера"]
+    lines = ["Дата;Опрос;Ответ;Комментарий;Клиент;Username;ID клиента;Менеджер;ID менеджера"]
     for row in rows:
         lines.append(";".join(str(x) if x is not None else "" for x in row))
     csv_bytes = "\n".join(lines).encode("utf-8-sig")
