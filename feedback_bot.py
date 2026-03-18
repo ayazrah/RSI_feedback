@@ -302,10 +302,11 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
     try:
         await context.bot.send_message(
             chat_id=NOTIFY_CHAT_ID,
-            text=(
+           text=(
                 f"📊 Новая обратная связь!\n\n"
                 f"📋 Опрос: {survey.get('title', survey_id)}\n"
                 f"👤 Клиент: {client.full_name}\n"
+                f"🔗 Username: @{client.username}" if client.username else f"🔗 Username: не указан") + "\n"
                 f"🆔 ID клиента: {client.id}\n"
                 f"👨‍💼 Менеджер: {manager_name}\n"
                 f"⭐ Ответ: {rating_text}\n"
@@ -393,6 +394,7 @@ async def handle_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"💬 Комментарий к оценке!\n\n"
                 f"📋 Опрос: {data['survey_title']}\n"
                 f"👤 Клиент: {data['client_name']}\n"
+                f"🔗 Username: @{update.effective_user.username}" if update.effective_user.username else "🔗 Username: не указан") + "\n"
                 f"⭐ Оценка: {data['rating']}\n"
                 f"👨‍💼 Менеджер: {data['manager_name']}\n\n"
                 f"📝 Комментарий:\n{comment}"
