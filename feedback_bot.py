@@ -74,80 +74,70 @@ ADMIN_USERS = {
     5808377858,   # Администратор nikita_garant
 }
 
+# ── Вводное сообщение ──────────────────────────────────────────────────────────
+INTRO = "👋 Здравствуйте! Нам очень важно ваше мнение — это помогает нам становиться лучше.\n\n"
+
+# ── Кнопки ────────────────────────────────────────────────────────────────────
+LIKE_BUTTONS = [
+    ("l1", "⚡ Скорость",   False),
+    ("l2", "💬 Общение",    False),
+    ("l3", "💰 Курс",       False),
+    ("l4", "🔒 Надёжность", False),
+    ("l5", "📝 Другое",     True),
+]
+
+DISLIKE_BUTTONS = [
+    ("d1", "⚡ Скорость",   False),
+    ("d2", "💬 Общение",    False),
+    ("d3", "💰 Курс",       False),
+    ("d4", "🔒 Надёжность", False),
+    ("d5", "📝 Другое",     True),
+]
+
 # ── Шаблоны опросов ────────────────────────────────────────────────────────────
 SURVEYS = [
     {
-        "id": "speed",
-        "title": "Скорость выполнения",
-        "description": "Как вам скорость выполнения заявки?",
-        "question": "⚡ Как вам скорость выполнения заявки?",
-        "buttons": [
-            ("s1", "🚀 Быстро, всё устроило", False),
-            ("s2", "🕐 Дольше чем ожидал", False),
-            ("s3", "😤 Очень долго", True),
-        ],
+        "id": "like",
+        "title": "Что понравилось?",
+        "description": "Отправить клиенту вопрос о том что понравилось",
+        "question": f"{INTRO}😊 Что вам понравилось больше всего в работе с нами?",
+        "buttons": LIKE_BUTTONS,
     },
     {
-        "id": "communication",
-        "title": "Коммуникация",
-        "description": "Держали ли вас в курсе по ходу заявки?",
-        "question": "📞 Держали ли вас в курсе по ходу заявки?",
-        "buttons": [
-            ("c1", "👍 Да, всё понятно", False),
-            ("c2", "😐 Иногда уточнял сам", False),
-            ("c3", "👎 Приходилось спрашивать", True),
-        ],
+        "id": "dislike",
+        "title": "Что не понравилось?",
+        "description": "Отправить клиенту вопрос о том что не понравилось",
+        "question": f"{INTRO}🤔 Что можно улучшить в нашей работе?",
+        "buttons": DISLIKE_BUTTONS,
     },
     {
-        "id": "return",
-        "title": "Готовность вернуться",
-        "description": "Планируете обратиться к нам снова?",
-        "question": "🔄 Планируете обратиться к нам снова?",
-        "buttons": [
-            ("r1", "✅ Да, буду обращаться", False),
-            ("r2", "🤔 Зависит от условий", False),
-            ("r3", "❌ Нет", True),
-        ],
-    },
-    {
-        "id": "declined",
-        "title": "Почему не совершил обмен",
-        "description": "Для клиентов которые отказались от сделки",
-        "question": "🤔 Почему вы решили не продолжать?",
-        "buttons": [
-            ("d1", "💰 Курс не устроил", True),
-            ("d2", "⏳ Долго ждать", True),
-            ("d3", "😕 Мало информации", True),
-            ("d4", "🔒 Безопасность", True),
-            ("d5", "🏦 Другой сервис", True),
-        ],
-    },
-    {
-        "id": "impression",
-        "title": "Общее впечатление",
-        "description": "Эмоции и впечатления от работы с нами",
-        "question": "😊 Как вам общее впечатление от работы с нами?",
-        "buttons": [
-            ("i1", "😊 Всё понравилось", False),
-            ("i2", "😐 Нормально, есть что улучшить", False),
-            ("i3", "😟 Неприятный осадок", True),
-        ],
+        "id": "full",
+        "title": "Полный отзыв (два вопроса)",
+        "description": "Отправить оба вопроса подряд — что понравилось и что улучшить",
+        "question": "FULL",
+        "buttons": [],
     },
 ]
 
 SURVEY_MAP = {s["id"]: s for s in SURVEYS}
 
 BUTTON_MAP = {}
-for s in SURVEYS:
-    for code, text, is_negative in s["buttons"]:
-        BUTTON_MAP[code] = (text, is_negative, s["id"])
+for code, text, needs_comment in LIKE_BUTTONS:
+    BUTTON_MAP[code] = (text, needs_comment, "like")
+for code, text, needs_comment in DISLIKE_BUTTONS:
+    BUTTON_MAP[code] = (text, needs_comment, "dislike")
 
 
-# ── Вспомогательная функция для username ──────────────────────────────────────
+# ── Вспомогательные функции ───────────────────────────────────────────────────
 def fmt_username(username):
-    if username:
-        return f"@{username}"
-    return "не указан"
+    return f"@{username}" if username else "не указан"
+
+
+def make_keyboard(buttons, manager_id, survey_id):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(text, callback_data=f"fb|{code}|{manager_id}|{survey_id}")]
+        for code, text, _ in buttons
+    ])
 
 
 # ── База данных ────────────────────────────────────────────────────────────────
@@ -233,52 +223,98 @@ async def handle_inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE
         if search and search not in survey["title"].lower() and search not in survey["description"].lower():
             continue
 
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton(
-                text,
-                callback_data=f"fb|{code}|{manager.id}"
-            )]
-            for code, text, _ in survey["buttons"]
-        ])
-
-        results.append(
-            InlineQueryResultArticle(
-                id=str(uuid.uuid4()),
-                title=survey["title"],
-                description=survey["description"],
-                input_message_content=InputTextMessageContent(survey["question"]),
-                reply_markup=keyboard,
+        if survey["id"] == "full":
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton(
+                    "Отправить два вопроса",
+                    callback_data=f"full|{manager.id}"
+                )]
+            ])
+            results.append(
+                InlineQueryResultArticle(
+                    id=str(uuid.uuid4()),
+                    title=survey["title"],
+                    description=survey["description"],
+                    input_message_content=InputTextMessageContent(
+                        "💬 Пожалуйста, оцените нашу работу — ответьте на два коротких вопроса ниже:"
+                    ),
+                    reply_markup=keyboard,
+                )
             )
-        )
+        else:
+            keyboard = make_keyboard(survey["buttons"], manager.id, survey["id"])
+            results.append(
+                InlineQueryResultArticle(
+                    id=str(uuid.uuid4()),
+                    title=survey["title"],
+                    description=survey["description"],
+                    input_message_content=InputTextMessageContent(survey["question"]),
+                    reply_markup=keyboard,
+                )
+            )
 
     await query.answer(results, cache_time=10)
+
+
+# ── Callback — полный отзыв ────────────────────────────────────────────────────
+async def handle_full_survey(update: Update, context: ContextTypes.DEFAULT_TYPE, manager_id: int):
+    query = update.callback_query
+    client = query.from_user
+
+    await context.bot.send_message(
+        chat_id=client.id,
+        text=f"{INTRO}😊 Что вам понравилось больше всего в работе с нами?",
+        reply_markup=make_keyboard(LIKE_BUTTONS, manager_id, "like"),
+    )
+
+    await context.bot.send_message(
+        chat_id=client.id,
+        text="🤔 И ещё один вопрос — что можно улучшить в нашей работе?",
+        reply_markup=make_keyboard(DISLIKE_BUTTONS, manager_id, "dislike"),
+    )
+
+    await query.edit_message_text(
+        "💬 Два вопроса отправлены клиенту в личку.\n"
+        "Ответы придут в группу."
+    )
 
 
 # ── Callback — клиент нажал кнопку ────────────────────────────────────────────
 async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+
+    if query.data.startswith("full|"):
+        parts = query.data.split("|")
+        manager_id = int(parts[1])
+        await query.answer()
+        await handle_full_survey(update, context, manager_id)
+        return
+
     await query.answer("Спасибо за ответ! 🙏")
 
     parts = query.data.split("|")
-    if len(parts) != 3 or parts[0] != "fb":
+    if len(parts) != 4 or parts[0] != "fb":
         return
 
-    _, btn_code, manager_id_str = parts
+    _, btn_code, manager_id_str, survey_id = parts
     manager_id = int(manager_id_str)
     client = query.from_user
 
     if btn_code not in BUTTON_MAP:
         return
 
-    rating_text, is_negative, survey_id = BUTTON_MAP[btn_code]
+    rating_text, needs_comment, btn_type = BUTTON_MAP[btn_code]
     survey = SURVEY_MAP.get(survey_id, {})
 
     manager_chat = await context.bot.get_chat(manager_id)
     manager_name = manager_chat.full_name if manager_chat else str(manager_id)
 
+    survey_title = "Что понравилось" if btn_type == "like" else "Что не понравилось"
+    survey_question = survey.get("question", "")
+
     feedback_id = save_feedback(
-        survey_title=survey.get("title", survey_id),
-        survey_question=survey.get("question", ""),
+        survey_title=survey_title,
+        survey_question=survey_question,
         rating=rating_text,
         client_name=client.full_name,
         client_username=client.username,
@@ -287,33 +323,32 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
         manager_id=manager_id,
     )
 
-    needs_comment = is_negative or survey_id == "declined"
-
     if needs_comment:
         deep_link = f"https://t.me/{BOT_USERNAME}?start=comment_{feedback_id}"
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("✏️ Оставить комментарий", url=deep_link)]
+            [InlineKeyboardButton("✏️ Написать подробнее", url=deep_link)]
         ])
         await query.edit_message_text(
-            f"{survey.get('question', 'Оценка сервиса')}\n\n"
+            f"{survey_question}\n\n"
             f"Ваш ответ: {rating_text}\n\n"
-            "Если хотите оставить комментарий — нажмите кнопку ниже,\n"
+            "Если хотите уточнить — нажмите кнопку ниже,\n"
             "запустите бота и напишите одним сообщением:",
             reply_markup=keyboard,
         )
     else:
         await query.edit_message_text(
-            f"{survey.get('question', 'Оценка сервиса')}\n\n"
+            f"{survey_question}\n\n"
             f"Ваш ответ: {rating_text}\n\n"
             "Спасибо! Мы ценим ваше мнение 🙏"
         )
 
+    emoji = "😊" if btn_type == "like" else "🤔"
     try:
         await context.bot.send_message(
             chat_id=NOTIFY_CHAT_ID,
             text=(
                 f"📊 Новая обратная связь!\n\n"
-                f"📋 Опрос: {survey.get('title', survey_id)}\n"
+                f"{emoji} Тип: {survey_title}\n"
                 f"👤 Клиент: {client.full_name}\n"
                 f"🔗 Username: {fmt_username(client.username)}\n"
                 f"🆔 ID клиента: {client.id}\n"
@@ -336,7 +371,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if row:
                 survey_title, rating, client_name, client_username, manager_name, created_at, comment = row
 
-                # Проверка — комментарий уже был оставлен
                 if comment:
                     await update.message.reply_text(
                         "Ваш комментарий уже получен, спасибо! 🙏\n"
@@ -344,7 +378,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                     return
 
-                # Проверка — прошло больше 24 часов
                 created = datetime.fromisoformat(created_at)
                 if (datetime.now(MSK) - created).total_seconds() > 86400:
                     await update.message.reply_text(
@@ -365,7 +398,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "Спасибо что решили написать! 🙏\n\n"
                     "Напишите пожалуйста одним сообщением что именно произошло — "
                     "мы обязательно разберёмся и исправим.\n\n"
-                    
+                   
                 )
                 return
         except Exception as e:
@@ -400,7 +433,7 @@ async def handle_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id=NOTIFY_CHAT_ID,
             text=(
                 f"💬 Комментарий к оценке!\n\n"
-                f"📋 Опрос: {data['survey_title']}\n"
+                f"📋 Тип: {data['survey_title']}\n"
                 f"👤 Клиент: {data['client_name']}\n"
                 f"🔗 Username: {fmt_username(data.get('client_username'))}\n"
                 f"⭐ Оценка: {data['rating']}\n"
@@ -442,7 +475,7 @@ async def cmd_export(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not rows:
         await update.message.reply_text("📊 Пока нет ни одного ответа.")
         return
-    lines = ["Дата;Опрос;Ответ;Комментарий;Клиент;Username;ID клиента;Менеджер;ID менеджера"]
+    lines = ["Дата;Тип;Ответ;Комментарий;Клиент;Username;ID клиента;Менеджер;ID менеджера"]
     for row in rows:
         lines.append(";".join(str(x) if x is not None else "" for x in row))
     csv_bytes = "\n".join(lines).encode("utf-8-sig")
@@ -461,7 +494,7 @@ def main():
     app.add_handler(CommandHandler("stats", cmd_stats))
     app.add_handler(CommandHandler("export", cmd_export))
     app.add_handler(InlineQueryHandler(handle_inline_query))
-    app.add_handler(CallbackQueryHandler(handle_feedback_button, pattern=r"^fb\|"))
+    app.add_handler(CallbackQueryHandler(handle_feedback_button, pattern=r"^(fb|full)\|"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_comment))
     logger.info("Бот запущен...")
     app.run_polling()
