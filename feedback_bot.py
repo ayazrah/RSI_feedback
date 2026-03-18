@@ -110,13 +110,6 @@ SURVEYS = [
         "question": f"{INTRO}🤔 Что можно улучшить в нашей работе?",
         "buttons": DISLIKE_BUTTONS,
     },
-    {
-        "id": "full",
-        "title": "Полный отзыв (два вопроса)",
-        "description": "Отправить оба вопроса подряд — что понравилось и что улучшить",
-        "question": "FULL",
-        "buttons": [],
-    },
 ]
 
 SURVEY_MAP = {s["id"]: s for s in SURVEYS}
@@ -223,73 +216,23 @@ async def handle_inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE
         if search and search not in survey["title"].lower() and search not in survey["description"].lower():
             continue
 
-        if survey["id"] == "full":
-            keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton(
-                    "Отправить два вопроса",
-                    callback_data=f"full|{manager.id}"
-                )]
-            ])
-            results.append(
-                InlineQueryResultArticle(
-                    id=str(uuid.uuid4()),
-                    title=survey["title"],
-                    description=survey["description"],
-                    input_message_content=InputTextMessageContent(
-                        "💬 Пожалуйста, оцените нашу работу — ответьте на два коротких вопроса ниже:"
-                    ),
-                    reply_markup=keyboard,
-                )
+        keyboard = make_keyboard(survey["buttons"], manager.id, survey["id"])
+        results.append(
+            InlineQueryResultArticle(
+                id=str(uuid.uuid4()),
+                title=survey["title"],
+                description=survey["description"],
+                input_message_content=InputTextMessageContent(survey["question"]),
+                reply_markup=keyboard,
             )
-        else:
-            keyboard = make_keyboard(survey["buttons"], manager.id, survey["id"])
-            results.append(
-                InlineQueryResultArticle(
-                    id=str(uuid.uuid4()),
-                    title=survey["title"],
-                    description=survey["description"],
-                    input_message_content=InputTextMessageContent(survey["question"]),
-                    reply_markup=keyboard,
-                )
-            )
+        )
 
     await query.answer(results, cache_time=10)
-
-
-# ── Callback — полный отзыв ────────────────────────────────────────────────────
-async def handle_full_survey(update: Update, context: ContextTypes.DEFAULT_TYPE, manager_id: int):
-    query = update.callback_query
-    client = query.from_user
-
-    await context.bot.send_message(
-        chat_id=client.id,
-        text=f"{INTRO}😊 Что вам понравилось больше всего в работе с нами?",
-        reply_markup=make_keyboard(LIKE_BUTTONS, manager_id, "like"),
-    )
-
-    await context.bot.send_message(
-        chat_id=client.id,
-        text="🤔 И ещё один вопрос — что можно улучшить в нашей работе?",
-        reply_markup=make_keyboard(DISLIKE_BUTTONS, manager_id, "dislike"),
-    )
-
-    await query.edit_message_text(
-        "💬 Два вопроса отправлены клиенту в личку.\n"
-        "Ответы придут в группу."
-    )
 
 
 # ── Callback — клиент нажал кнопку ────────────────────────────────────────────
 async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-
-    if query.data.startswith("full|"):
-        parts = query.data.split("|")
-        manager_id = int(parts[1])
-        await query.answer()
-        await handle_full_survey(update, context, manager_id)
-        return
-
     await query.answer("Спасибо за ответ! 🙏")
 
     parts = query.data.split("|")
@@ -396,9 +339,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 }
                 await update.message.reply_text(
                     "Спасибо что решили написать! 🙏\n\n"
-                    "Напишите пожалуйста одним сообщением что именно произошло — "
-                    "мы обязательно разберёмся и исправим.\n\n"
-                   
+                    "Напишите пожалуйста одним сообщением ваш комментарий — "
+                    "нам важно каждое мнение.\n\n"
+                    
                 )
                 return
         except Exception as e:
@@ -494,7 +437,7 @@ def main():
     app.add_handler(CommandHandler("stats", cmd_stats))
     app.add_handler(CommandHandler("export", cmd_export))
     app.add_handler(InlineQueryHandler(handle_inline_query))
-    app.add_handler(CallbackQueryHandler(handle_feedback_button, pattern=r"^(fb|full)\|"))
+    app.add_handler(CallbackQueryHandler(handle_feedback_button, pattern=r"^fb\|"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_comment))
     logger.info("Бот запущен...")
     app.run_polling()
