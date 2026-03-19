@@ -127,10 +127,21 @@ def fmt_username(username):
 
 
 def make_keyboard(buttons, manager_id, survey_id):
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton(text, callback_data=f"fb|{code}|{manager_id}|{survey_id}")]
-        for code, text, _ in buttons
-    ])
+    rows = []
+    regular = [(code, text) for code, text, nc in buttons if not nc]
+    other   = [(code, text) for code, text, nc in buttons if nc]
+
+    for i in range(0, len(regular), 2):
+        row = [
+            InlineKeyboardButton(text, callback_data=f"fb|{code}|{manager_id}|{survey_id}")
+            for code, text in regular[i:i+2]
+        ]
+        rows.append(row)
+
+    for code, text in other:
+        rows.append([InlineKeyboardButton(text, callback_data=f"fb|{code}|{manager_id}|{survey_id}")])
+
+    return InlineKeyboardMarkup(rows)
 
 
 # ── База данных ────────────────────────────────────────────────────────────────
