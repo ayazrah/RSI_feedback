@@ -379,7 +379,7 @@ async def handle_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "Спасибо за ваш комментарий! 🙏\n"
-        "Мы обязательно разберёмся и улучшим нашу работу."
+        "Мы ценим ваше мнение"
     )
 
     try:
