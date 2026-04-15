@@ -371,7 +371,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "Спасибо что решили написать! 🙏\n\n"
                     "Напишите пожалуйста одним сообщением ваш комментарий — "
                     "нам важно каждое мнение.\n\n"
-                    "⚠️ Напишите всё одним сообщением, после отправки комментарий будет сохранён."
+                   
                 )
                 return
         except Exception as e:
@@ -398,7 +398,7 @@ async def handle_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "Спасибо за ваш комментарий! 🙏\n"
-        "Мы обязательно разберёмся и улучшим нашу работу."
+        
     )
 
     try:
