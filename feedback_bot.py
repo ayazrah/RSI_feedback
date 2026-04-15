@@ -78,47 +78,28 @@ ADMIN_USERS = {
 INTRO = "👋 Здравствуйте! Нам очень важно ваше мнение — это помогает нам становиться лучше.\n\n"
 
 # ── Кнопки ────────────────────────────────────────────────────────────────────
-LIKE_BUTTONS = [
-    ("l1", "⚡ Скорость",   False),
-    ("l2", "💬 Общение",    False),
-    ("l3", "💰 Курс",       False),
-    ("l4", "🔒 Надёжность", False),
-    ("l5", "📝 Другое",     True),
-]
-
-DISLIKE_BUTTONS = [
-    ("d1", "⚡ Скорость",   False),
-    ("d2", "💬 Общение",    False),
-    ("d3", "💰 Курс",       False),
-    ("d4", "🔒 Надёжность", False),
-    ("d5", "📝 Другое",     True),
+REVIEW_BUTTONS = [
+    ("r1", "✅ Чётко",         True),
+    ("r2", "😐 Нормально",     True),
+    ("r3", "⚠️ Затруднения",   True),
 ]
 
 # ── Шаблоны опросов ────────────────────────────────────────────────────────────
 SURVEYS = [
     {
-        "id": "like",
-        "title": "Что понравилось?",
-        "description": "Отправить клиенту вопрос о том что понравилось",
-        "question": f"{INTRO}😊 Что вам понравилось больше всего в работе с нами?",
-        "buttons": LIKE_BUTTONS,
-    },
-    {
-        "id": "dislike",
-        "title": "Что не понравилось?",
-        "description": "Отправить клиенту вопрос о том что не понравилось",
-        "question": f"{INTRO}🤔 Что можно улучшить в нашей работе?",
-        "buttons": DISLIKE_BUTTONS,
+        "id": "review",
+        "title": "Отзыв о сделке",
+        "description": "Поделитесь впечатлением о нашей работе",
+        "question": f"{INTRO}Поделитесь впечатлением о нашей работе — расскажите как прошла сделка:",
+        "buttons": REVIEW_BUTTONS,
     },
 ]
 
 SURVEY_MAP = {s["id"]: s for s in SURVEYS}
 
 BUTTON_MAP = {}
-for code, text, needs_comment in LIKE_BUTTONS:
-    BUTTON_MAP[code] = (text, needs_comment, "like")
-for code, text, needs_comment in DISLIKE_BUTTONS:
-    BUTTON_MAP[code] = (text, needs_comment, "dislike")
+for code, text, needs_comment in REVIEW_BUTTONS:
+    BUTTON_MAP[code] = (text, needs_comment, "review")
 
 
 # ── Вспомогательные функции ───────────────────────────────────────────────────
@@ -127,20 +108,10 @@ def fmt_username(username):
 
 
 def make_keyboard(buttons, manager_id, survey_id):
-    rows = []
-    regular = [(code, text) for code, text, nc in buttons if not nc]
-    other   = [(code, text) for code, text, nc in buttons if nc]
-
-    for i in range(0, len(regular), 2):
-        row = [
-            InlineKeyboardButton(text, callback_data=f"fb|{code}|{manager_id}|{survey_id}")
-            for code, text in regular[i:i+2]
-        ]
-        rows.append(row)
-
-    for code, text in other:
-        rows.append([InlineKeyboardButton(text, callback_data=f"fb|{code}|{manager_id}|{survey_id}")])
-
+    rows = [[
+        InlineKeyboardButton(text, callback_data=f"fb|{code}|{manager_id}|{survey_id}")
+        for code, text, _ in buttons
+    ]]
     return InlineKeyboardMarkup(rows)
 
 
@@ -263,7 +234,7 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
     manager_chat = await context.bot.get_chat(manager_id)
     manager_name = manager_chat.full_name if manager_chat else str(manager_id)
 
-    survey_title = "Что понравилось" if btn_type == "like" else "Что не понравилось"
+    survey_title = survey.get("title", "Отзыв о сделке")
     survey_question = survey.get("question", "")
 
     feedback_id = save_feedback(
@@ -296,7 +267,7 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
             "Спасибо! Мы ценим ваше мнение 🙏"
         )
 
-    emoji = "😊" if btn_type == "like" else "🤔"
+    emoji = "📊"
     try:
         await context.bot.send_message(
             chat_id=NOTIFY_CHAT_ID,
@@ -352,7 +323,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "Спасибо что решили написать! 🙏\n\n"
                     "Напишите пожалуйста одним сообщением ваш комментарий — "
                     "нам важно каждое мнение.\n\n"
-                    
+                    "⚠️ Напишите всё одним сообщением, после отправки комментарий будет сохранён."
                 )
                 return
         except Exception as e:
@@ -379,7 +350,7 @@ async def handle_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "Спасибо за ваш комментарий! 🙏\n"
-        "Мы ценим ваше мнение"
+        "Мы обязательно разберёмся и улучшим нашу работу."
     )
 
     try:
