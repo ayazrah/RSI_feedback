@@ -256,8 +256,8 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
         await query.edit_message_text(
             f"{survey_question}\n\n"
             f"Ваш ответ: {rating_text}\n\n"
-            "Если хотите уточнить — нажмите кнопку ниже,\n"
-            "запустите бота и напишите одним сообщением:",
+            "Напишите пожалуйста комментарий текстом — нажмите кнопку ниже\n"
+            "Запустите бота и напишите одним сообщением:",
             reply_markup=keyboard,
         )
     else:
