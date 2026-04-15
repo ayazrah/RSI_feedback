@@ -134,6 +134,15 @@ def init_db():
                 manager_id      INTEGER NOT NULL
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS calls (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at   TEXT NOT NULL,
+                manager_id   INTEGER NOT NULL,
+                manager_name TEXT,
+                survey_title TEXT NOT NULL
+            )
+        """)
         conn.commit()
 
 
@@ -159,6 +168,38 @@ def save_comment(feedback_id, comment):
             (comment, datetime.now(MSK).isoformat(), feedback_id)
         )
         conn.commit()
+
+
+def save_call(manager_id, manager_name, survey_title):
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute(
+            "INSERT INTO calls (created_at, manager_id, manager_name, survey_title) VALUES (?, ?, ?, ?)",
+            (datetime.now(MSK).isoformat(), manager_id, manager_name, survey_title)
+        )
+        conn.commit()
+
+
+def get_conversion():
+    with sqlite3.connect(DB_PATH) as conn:
+        calls = conn.execute("""
+            SELECT manager_name, manager_id, COUNT(*) as cnt
+            FROM calls
+            GROUP BY manager_id
+        """).fetchall()
+        answers = conn.execute("""
+            SELECT manager_name, manager_id, COUNT(*) as cnt
+            FROM feedback
+            GROUP BY manager_id
+        """).fetchall()
+    calls_map = {row[1]: (row[0], row[2]) for row in calls}
+    answers_map = {row[1]: row[2] for row in answers}
+    result = []
+    for manager_id, (manager_name, call_cnt) in calls_map.items():
+        answer_cnt = answers_map.get(manager_id, 0)
+        pct = round(answer_cnt / call_cnt * 100) if call_cnt > 0 else 0
+        result.append((manager_name, call_cnt, answer_cnt, pct))
+    result.sort(key=lambda x: -x[3])
+    return result
 
 
 def get_feedback_by_id(feedback_id):
@@ -197,6 +238,13 @@ async def handle_inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE
     for survey in SURVEYS:
         if search and search not in survey["title"].lower() and search not in survey["description"].lower():
             continue
+
+        # Логируем вызов бота менеджером
+        save_call(
+            manager_id=manager.id,
+            manager_name=manager.full_name,
+            survey_title=survey["title"],
+        )
 
         keyboard = make_keyboard(survey["buttons"], manager.id, survey["id"])
         results.append(
@@ -256,8 +304,8 @@ async def handle_feedback_button(update: Update, context: ContextTypes.DEFAULT_T
         await query.edit_message_text(
             f"{survey_question}\n\n"
             f"Ваш ответ: {rating_text}\n\n"
-            "Напишите пожалуйста комментарий текстом — нажмите кнопку ниже\n"
-            "Запустите бота и напишите одним сообщением:",
+            "Напишите пожалуйста комментарий текстом — нажмите кнопку ниже,\n"
+            "запустите бота и напишите одним сообщением:",
             reply_markup=keyboard,
         )
     else:
@@ -411,6 +459,48 @@ async def cmd_export(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def cmd_conversion(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ADMIN_USERS:
+        await update.message.reply_text("⛔ У вас нет доступа.")
+        return
+    rows = get_conversion()
+    if not rows:
+        await update.message.reply_text("📊 Пока нет данных о вызовах.")
+        return
+    total_calls = sum(r[1] for r in rows)
+    total_answers = sum(r[2] for r in rows)
+    total_pct = round(total_answers / total_calls * 100) if total_calls > 0 else 0
+    lines_out = ["📊 Конверсия в ответы (за всё время)\n"]
+    for manager_name, calls, answers, pct in rows:
+        bar = "█" * (pct // 10) or "▏"
+        lines_out.append("👤 " + manager_name + "\n   вызовов: " + str(calls) + " / ответов: " + str(answers) + " / " + str(pct) + "% " + bar + "\n")
+    lines_out.append("📌 Итого: вызовов " + str(total_calls) + " / ответов " + str(total_answers) + " / конверсия " + str(total_pct) + "%")
+    await update.message.reply_text("\n".join(lines_out))
+
+
+async def cmd_export_conversion(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ADMIN_USERS:
+        await update.message.reply_text("⛔ У вас нет доступа.")
+        return
+    rows = get_conversion()
+    if not rows:
+        await update.message.reply_text("📊 Пока нет данных о вызовах.")
+        return
+    total_calls = sum(r[1] for r in rows)
+    total_answers = sum(r[2] for r in rows)
+    total_pct = round(total_answers / total_calls * 100) if total_calls > 0 else 0
+    csv_lines = ["Менеджер;Вызовов;Ответов;Конверсия"]
+    for manager_name, calls, answers, pct in rows:
+        csv_lines.append(manager_name + ";" + str(calls) + ";" + str(answers) + ";" + str(pct) + "%")
+    csv_lines.append("Итого;" + str(total_calls) + ";" + str(total_answers) + ";" + str(total_pct) + "%")
+    csv_bytes = "\n".join(csv_lines).encode("utf-8-sig")
+    await update.message.reply_document(
+        document=csv_bytes,
+        filename="conversion_" + datetime.now(MSK).strftime("%d%m%Y_%H%M") + ".csv",
+        caption="📊 Конверсия в ответы"
+    )
+
+
 # ── Запуск ─────────────────────────────────────────────────────────────────────
 def main():
     init_db()
@@ -418,6 +508,8 @@ def main():
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("stats", cmd_stats))
     app.add_handler(CommandHandler("export", cmd_export))
+    app.add_handler(CommandHandler("conversion", cmd_conversion))
+    app.add_handler(CommandHandler("export_conversion", cmd_export_conversion))
     app.add_handler(InlineQueryHandler(handle_inline_query))
     app.add_handler(CallbackQueryHandler(handle_feedback_button, pattern=r"^fb\|"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_comment))
